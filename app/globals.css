@@ -1,0 +1,287 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0b1020;
+  --bg-2: #10172a;
+  --panel: rgba(18, 25, 42, 0.88);
+  --panel-2: rgba(15, 21, 35, 0.92);
+  --surface: #151d31;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+  --text: #ecf2ff;
+  --text-2: #a9b5d0;
+  --text-3: #77829b;
+  --accent: #7c5cff;
+  --accent-2: #16c0d8;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+}
+
+.light {
+  --bg: #f4f7fb;
+  --bg-2: #eef2f8;
+  --panel: rgba(255,255,255,0.9);
+  --panel-2: rgba(255,255,255,0.96);
+  --surface: #ffffff;
+  --border: rgba(15,23,42,0.08);
+  --border-strong: rgba(15,23,42,0.14);
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #64748b;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(124,92,255,0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(22,192,216,0.12), transparent 24%),
+    linear-gradient(180deg, var(--bg), var(--bg-2));
+  min-height: 100vh;
+}
+
+/* Panel & card base */
+.sp-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  backdrop-filter: blur(14px);
+}
+.sp-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+}
+.sp-surface {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+/* Inputs */
+.sp-input {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  padding: 14px 15px;
+  color: var(--text);
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sp-input:focus {
+  outline: none;
+  border-color: rgba(124,92,255,0.5);
+  box-shadow: 0 0 0 4px rgba(124,92,255,0.12);
+}
+
+/* Buttons */
+.sp-btn {
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: 16px;
+  padding: 15px 18px;
+  transition: transform 0.16s, box-shadow 0.18s, opacity 0.18s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.sp-btn:hover { transform: translateY(-1px); }
+.sp-btn-primary {
+  color: white;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 18px 36px rgba(124,92,255,0.26);
+}
+.sp-btn-secondary {
+  color: var(--text);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+}
+
+/* Verdict chips */
+.v-strong { background: rgba(34,197,94,0.14); color: #b8f6cf; border-color: rgba(34,197,94,0.22); }
+.v-playable { background: rgba(20,184,166,0.14); color: #9ff6eb; border-color: rgba(20,184,166,0.22); }
+.v-borderline { background: rgba(245,158,11,0.14); color: #fcd08a; border-color: rgba(245,158,11,0.22); }
+.v-fragile { background: rgba(239,68,68,0.14); color: #fdadad; border-color: rgba(239,68,68,0.22); }
+
+/* Confidence */
+.confidence-high { background: rgba(34,197,94,0.12); color: #b8f6cf; border-color: rgba(34,197,94,0.2); }
+.confidence-medium { background: rgba(245,158,11,0.12); color: #fcd08a; border-color: rgba(245,158,11,0.2); }
+.confidence-low { background: rgba(239,68,68,0.12); color: #fdadad; border-color: rgba(239,68,68,0.2); }
+
+/* Choice cards */
+.choice-card {
+  position: relative;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  min-height: 140px;
+  transition: border-color 0.18s, transform 0.16s, box-shadow 0.18s;
+  text-align: left;
+}
+.choice-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.choice-card.active {
+  border-color: rgba(124,92,255,0.45);
+  box-shadow: 0 0 0 4px rgba(124,92,255,0.12);
+  background: linear-gradient(180deg, rgba(124,92,255,0.16), rgba(22,192,216,0.08));
+}
+
+.challenge-card {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  min-height: 120px;
+  transition: all 0.16s;
+  text-align: left;
+}
+.challenge-card.active {
+  border-color: rgba(22,192,216,0.45);
+  box-shadow: 0 0 0 4px rgba(22,192,216,0.1);
+  background: linear-gradient(180deg, rgba(22,192,216,0.10), rgba(255,255,255,0.02));
+}
+
+/* Pills */
+.sp-pill {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-2);
+  border-radius: 16px;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  min-width: 88px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.sp-pill.active {
+  background: linear-gradient(180deg, rgba(124,92,255,0.14), rgba(124,92,255,0.08));
+  color: var(--text);
+  border-color: rgba(124,92,255,0.34);
+}
+.sp-pill-alt.active {
+  background: linear-gradient(180deg, rgba(22,192,216,0.16), rgba(22,192,216,0.08));
+  border-color: rgba(22,192,216,0.34);
+}
+
+/* Metrics */
+.sp-metric {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+}
+.sp-metric-label { color: var(--text-3); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; }
+.sp-metric-value { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.04em; margin-top: 7px; }
+.sp-metric-sub { font-size: 0.78rem; color: var(--text-2); margin-top: 5px; line-height: 1.45; }
+
+/* Plan cards */
+.plan-card {
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+}
+.plan-card.primary {
+  border-color: rgba(124,92,255,0.34);
+  box-shadow: 0 0 0 4px rgba(124,92,255,0.10);
+  background: linear-gradient(180deg, rgba(124,92,255,0.14), rgba(255,255,255,0.02));
+}
+
+/* Compare cards */
+.compare-card {
+  display: grid;
+  grid-template-columns: minmax(0,1.2fr) repeat(4, minmax(0,0.6fr));
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+}
+.compare-card.active {
+  border-color: rgba(22,192,216,0.34);
+  box-shadow: 0 0 0 4px rgba(22,192,216,0.08);
+}
+
+/* Detail rows */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.detail-row:last-child { border-bottom: none; }
+
+/* Notices */
+.sp-notice {
+  padding: 14px 15px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-2);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+/* Loading spinner */
+.sp-spinner {
+  width: 16px; height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  animation: sp-spin 0.8s linear infinite;
+}
+@keyframes sp-spin { to { transform: rotate(360deg); } }
+
+/* Flash animation */
+.sp-flash { animation: sp-flash-anim 0.75s ease; }
+@keyframes sp-flash-anim {
+  0% { box-shadow: 0 0 0 0 rgba(90,155,255,0); }
+  30% { box-shadow: 0 0 0 2px rgba(90,155,255,0.28); }
+  100% { box-shadow: 0 0 0 0 rgba(90,155,255,0); }
+}
+
+/* Responsive */
+@media (max-width: 1180px) {
+  .workspace-grid { grid-template-columns: 1fr !important; }
+  .compare-card { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 920px) {
+  .hero-grid { grid-template-columns: 1fr !important; }
+  .firm-grid { grid-template-columns: 1fr !important; }
+  .plan-grid { grid-template-columns: 1fr !important; }
+  .metric-grid { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* Light mode overrides */
+.light .sp-panel, .light .sp-card { background: rgba(255,255,255,0.94); border-color: rgba(15,23,42,0.10); }
+.light .sp-surface, .light .sp-metric, .light .plan-card, .light .compare-card,
+.light .sp-notice, .light .sp-input, .light .sp-pill, .light .choice-card, .light .challenge-card {
+  background: rgba(255,255,255,0.94); border-color: rgba(15,23,42,0.11);
+}
+.light .choice-card.active {
+  background: linear-gradient(180deg, rgba(124,92,255,0.10), rgba(22,192,216,0.05));
+}
+.light .challenge-card.active {
+  background: linear-gradient(180deg, rgba(22,192,216,0.08), rgba(124,92,255,0.03));
+}
