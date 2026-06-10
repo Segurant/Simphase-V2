@@ -122,6 +122,13 @@ function AppContent() {
 
       {/* RESULTS */}
       {s.analysis && <Results />}
+
+      {/* FOOTER */}
+      <footer className="py-10 mt-4 border-t border-[var(--border)] text-center">
+        <p className="text-[var(--text-3)] text-xs leading-relaxed max-w-[640px] mx-auto m-0">
+          SimPhase runs Monte Carlo simulations under each firm's published rules (verified June 2026). Results are statistical estimates based on the edge you provide — not guarantees, and not financial advice. Prop firm rules change; always confirm current terms with the firm before purchasing a challenge.
+        </p>
+      </footer>
     </main>
   </>);
 }
@@ -253,11 +260,23 @@ function Results() {
     if (!paywallOn) return;
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('unlocked') === 'sp19') {
-        localStorage.setItem('simphase_pro', '1');
-        params.delete('unlocked');
+      const cleanUrl = () => {
         const q = params.toString();
         window.history.replaceState({}, '', window.location.pathname + (q ? '?' + q : ''));
+      };
+      // Post-payment return: verify the Checkout session with Stripe, server-side
+      const sid = params.get('session_id');
+      if (sid) {
+        params.delete('session_id'); cleanUrl();
+        fetch(`/api/verify?session_id=${encodeURIComponent(sid)}`)
+          .then(r => r.json())
+          .then(d => { if (d?.ok) { localStorage.setItem('simphase_pro', '1'); setUnlocked(true); } })
+          .catch(() => {});
+      }
+      // Legacy redirect param (kept for older Payment Link configs)
+      if (params.get('unlocked') === 'sp19') {
+        localStorage.setItem('simphase_pro', '1');
+        params.delete('unlocked'); cleanUrl();
       }
       if (localStorage.getItem('simphase_pro') === '1') setUnlocked(true);
     } catch {}
@@ -330,16 +349,7 @@ function Results() {
         <CompareCol l="Pass" v={`${Math.round(alt.rec.passProbability*100)}%`} s={`Risk ${rf(alt.recRisk)}`}/><CompareCol l="Spend" v={MONEY.format(alt.rec.grossSpend)} s={`${alt.rec.expectedAttempts.toFixed(1)} att.`}/><CompareCol l="Days" v={`${Math.round(alt.rec.typicalDays)}d`} s={v.label}/><CompareCol l="Eco" v={economicsPosture(alt)} s={alt.challenge.firm==='topstep'?'Act. incl.':'Fee burn'}/></div>);})}</div></section>
 
       <section className="sp-panel p-7"><h3 className="text-base font-bold mb-4">Export your report</h3><CopySummary result={result} display={display} verdict={verdict} alternatives={alternatives}/><div className="mt-3"><PdfButton result={result} verdict={verdict} display={display} edge={edge} recs={recs}/></div></section>
-      </>) : <PaywallCard link={PAYWALL_LINK} feeAnchor={result.fee + result.activationFee} verdictLabel={verdict.label} />}
-
-      {/* FEEDBACK CTA */}
-      <section className="p-6 rounded-2xl text-center" style={{background:'rgba(124,92,255,0.06)', border:'1px solid rgba(124,92,255,0.18)'}}>
-        <h3 className="text-base font-bold mb-2">Did this feel useful?</h3>
-        <p className="text-[var(--text-2)] text-sm leading-relaxed m-0 mb-4 max-w-[500px] mx-auto">SimPhase is in beta. Your honest feedback — what worked, what felt off, what you would change — directly shapes what gets built next.</p>
-        <a href="https://docs.google.com/forms/d/e/1FAIpQLSdO-oBOL25-ucG8LlLBWbXps8lQXQxp8GUKL4EMIeu54gFnCg/viewform" target="_blank" rel="noopener noreferrer" className="sp-btn sp-btn-primary" style={{gap:'6px'}}>
-          <span>Share your feedback (2 min)</span>
-        </a>
-      </section>
+      </>) : <PaywallCard link={PAYWALL_LINK} feeAnchor={result.fee + result.activationFee} verdictLabel={verdict.label} onUnlock={()=>setUnlocked(true)} />}
     </section>
   );
 }
@@ -402,27 +412,53 @@ function CompareCol({l,v,s}:{l:string;v:string;s:string}) { return <div><div cla
 function MiniM({l,v}:{l:string;v:string}) { return <div className="sp-surface p-3"><div className="text-[var(--text-3)] text-[0.65rem] uppercase tracking-wider font-bold">{l}</div><div className="text-sm font-extrabold mt-1">{v}</div></div>; }
 
 
-function PaywallCard({ link, feeAnchor, verdictLabel }: { link: string; feeAnchor: number; verdictLabel: string }) {
+function PaywallCard({ link, feeAnchor, verdictLabel, onUnlock }: { link: string; feeAnchor: number; verdictLabel: string; onUnlock: () => void }) {
   const MONEY = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+  const [showRestore, setShowRestore] = useState(false);
+  const [email, setEmail] = useState('');
+  const [restoreState, setRestoreState] = useState<'idle'|'loading'|'fail'>('idle');
   const urgency = verdictLabel === 'Fragile' || verdictLabel === 'Borderline'
     ? 'Your edge needs every advantage it can get before you pay another fee.'
-    : 'Your edge can pass this — if the execution does not leak it away.';
+    : 'Your edge can pass this - if the execution does not leak it away.';
+  const restore = async () => {
+    setRestoreState('loading');
+    try {
+      const r = await fetch('/api/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      const d = await r.json();
+      if (d?.ok) { try { localStorage.setItem('simphase_pro', '1'); } catch {} onUnlock(); return; }
+    } catch {}
+    setRestoreState('fail');
+  };
   return (
     <section className="sp-panel p-7 md:p-8 text-center" style={{border:'1px solid rgba(124,92,255,0.35)', background:'linear-gradient(180deg, rgba(124,92,255,0.10), rgba(255,255,255,0.02))'}}>
       <span className="inline-block px-3 py-1.5 rounded-full text-[0.7rem] font-extrabold uppercase tracking-wider border border-[rgba(124,92,255,0.4)] mb-4" style={{background:'rgba(124,92,255,0.15)', color:'#d8ccff'}}>Full Challenge Plan</span>
       <h3 className="text-xl md:text-2xl font-extrabold tracking-tight mb-2">The verdict is free. The plan that gets you through is $19.</h3>
-      <p className="text-[var(--text-2)] text-sm leading-relaxed max-w-[540px] mx-auto mb-5">A failed attempt at this challenge costs you {feeAnchor ? MONEY.format(feeAnchor) : 'the full fee'} and weeks of work. {urgency} One-time payment — unlocks every plan, every firm, on this device.</p>
+      <p className="text-[var(--text-2)] text-sm leading-relaxed max-w-[540px] mx-auto mb-5">A failed attempt at this challenge costs you {feeAnchor ? MONEY.format(feeAnchor) : 'the full fee'} and weeks of work. {urgency} One-time payment - unlocks every plan, every firm. Your purchase email is your key on any device.</p>
       <div className="max-w-[440px] mx-auto text-left space-y-2 mb-6">
         {['Exact recommended risk % and the robust band that survives stress',
           'Three execution variants: safer / recommended / aggressive',
           'Day-one execution plan with kill-switch rules',
           'All same-size alternatives ranked for your edge',
-          'PDF report you can keep on your trading desk'].map((t,i)=>(
+          'Printable report you can keep on your trading desk'].map((t,i)=>(
           <div key={i} className="flex gap-2.5 items-start text-sm text-[var(--text-2)]"><span style={{color:'var(--green)'}}>OK</span><span>{t}</span></div>
         ))}
       </div>
       <a href={link} target="_blank" rel="noopener noreferrer" className="sp-btn sp-btn-primary" style={{fontSize:'1rem', padding:'14px 28px'}}>Unlock the full plan - $19 one-time</a>
       <p className="text-[var(--text-3)] text-xs mt-3">Secure payment via Stripe - Instant access - No subscription</p>
+      <div className="mt-5">
+        {!showRestore ? (
+          <button onClick={()=>setShowRestore(true)} className="text-sm font-semibold underline underline-offset-2 cursor-pointer bg-transparent border-none" style={{color:'var(--text-2)'}}>Already paid? Restore your access</button>
+        ) : (
+          <div className="max-w-[380px] mx-auto">
+            <p className="text-[var(--text-2)] text-xs mb-2">Enter the email you used at checkout:</p>
+            <div className="flex gap-2">
+              <input type="email" inputMode="email" value={email} onChange={e=>{setEmail(e.target.value); if(restoreState==='fail') setRestoreState('idle');}} placeholder="you@email.com" className="sp-input flex-1" />
+              <button onClick={restore} disabled={restoreState==='loading' || !email.includes('@')} className="sp-btn sp-btn-secondary shrink-0 disabled:opacity-60">{restoreState==='loading' ? 'Checking...' : 'Restore'}</button>
+            </div>
+            {restoreState==='fail' && <p className="text-xs mt-2 m-0" style={{color:'#fdadad'}}>No purchase found for this email. Use the exact email from your Stripe receipt, or buy access above.</p>}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
