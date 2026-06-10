@@ -449,7 +449,7 @@ function PaywallCard({ link, feeAnchor, verdictLabel, onUnlock }: { link: string
           <div key={i} className="flex gap-2.5 items-start text-sm text-[var(--text-2)]"><span style={{color:'var(--green)'}}>OK</span><span>{t}</span></div>
         ))}
       </div>
-      <a href={link} target="_blank" rel="noopener noreferrer" className="sp-btn sp-btn-primary" style={{fontSize:'1rem', padding:'14px 28px'}}>Unlock the full plan - $19 one-time</a>
+      <a href={link} className="sp-btn sp-btn-primary" style={{fontSize:'1rem', padding:'14px 28px'}}>Unlock the full plan - $19 one-time</a>
       <p className="text-[var(--text-3)] text-xs mt-3">Secure payment via Stripe - Instant access - No subscription</p>
       <div className="mt-5">
         {!showRestore ? (
