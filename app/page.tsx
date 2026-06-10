@@ -1,8 +1,8 @@
 'use client';
 
 import { SimPhaseProvider, useSimPhase } from '@/lib/store';
-import { FIRMS, CHALLENGES, rf, economicsPosture, verdictFor, buildRecommendations, generateReport } from '@/lib/simphase';
-import { useState, useEffect } from 'react';
+import { FIRMS, CHALLENGES, rf, economicsPosture, verdictFor, buildRecommendations } from '@/lib/simphase';
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() { return <SimPhaseProvider><AppContent /></SimPhaseProvider>; }
 
@@ -109,7 +109,7 @@ function AppContent() {
               <strong className="block text-lg leading-snug tracking-tight mb-2">Should you take {challenge.longName} on ${s.selectedSize>=1000?`${s.selectedSize/1000}k`:s.selectedSize}?</strong>
               <p className="text-[var(--text-2)] text-sm leading-relaxed m-0">{challenge.description}</p>
             </div>
-            <div className="mb-5"><div className="flex justify-between items-end mb-2"><label className="text-sm font-bold">Challenge fee</label><span className="text-[var(--text-3)] text-xs">Editable</span></div><input type="number" min={0} step={0.01} value={s.fee} onChange={e=>s.setFee(Number(e.target.value))} className="sp-input" /><p className="text-[var(--text-3)] text-xs leading-relaxed mt-2">{challenge.feeNote}</p></div>
+            <div className="mb-5"><div className="flex justify-between items-end mb-2"><label className="text-sm font-bold">Challenge fee</label><span className="text-[var(--text-3)] text-xs">Editable</span></div><NumericInput value={s.fee} onChange={v=>s.setFee(v)} /><p className="text-[var(--text-3)] text-xs leading-relaxed mt-2">{challenge.feeNote}</p></div>
             <div className="h-px bg-[var(--border)] my-4"/>
             <div className="space-y-2.5">
               <button onClick={s.runAnalysis} disabled={s.isAnalyzing} className="sp-btn sp-btn-primary w-full disabled:opacity-90 disabled:pointer-events-none"><span>{s.isAnalyzing?'Analyzing...':'See if this challenge is playable'}</span>{s.isAnalyzing&&<span className="sp-spinner"/>}</button>
@@ -223,8 +223,18 @@ function CsvUploadZone({ type, label, hint, fileName, onUpload, onDemo, sampleCo
   );
 }
 
-function InputField({label,hint,value,min,max,step,onChange}:{label:string;hint:string;value:number;min:number;max:number;step:number;onChange:(v:number)=>void}) {
-  return <div><div className="flex justify-between items-end mb-2"><label className="text-sm font-bold">{label}</label><span className="text-[var(--text-3)] text-xs">{hint}</span></div><input type="number" value={value} min={min} max={max} step={step} onChange={e=>onChange(Number(e.target.value))} className="sp-input" /></div>;
+function NumericInput({value,onChange,className}:{value:number;onChange:(v:number)=>void;className?:string}) {
+  const [text, setText] = useState(String(value));
+  const last = useRef(value);
+  useEffect(() => { if (value !== last.current) { setText(String(value)); last.current = value; } }, [value]);
+  return <input type="text" inputMode="decimal" value={text}
+    onChange={e=>{ const raw=e.target.value; setText(raw); const n=parseFloat(raw.replace(',','.')); if(Number.isFinite(n)){ last.current=n; onChange(n); } }}
+    onBlur={()=>{ const n=parseFloat(text.replace(',','.')); if(!Number.isFinite(n)) setText(String(value)); else if(String(n)!==text) setText(String(n)); }}
+    className={className||'sp-input'} />;
+}
+
+function InputField({label,hint,value,onChange}:{label:string;hint:string;value:number;min?:number;max?:number;step?:number;onChange:(v:number)=>void}) {
+  return <div><div className="flex justify-between items-end mb-2"><label className="text-sm font-bold">{label}</label><span className="text-[var(--text-3)] text-xs">{hint}</span></div><NumericInput value={value} onChange={onChange} /></div>;
 }
 
 
@@ -385,7 +395,7 @@ function SuggestionCard({ sug, small }: { sug: any; small?: boolean }) {
   </div>);
 }
 
-function Metric({label,value,sub,small}:{label:string;value:string;sub:string;small?:boolean}) { return <div className="sp-metric"><div className="sp-metric-label">{label}</div><div className={small?'text-lg font-extrabold mt-2 leading-snug':'sp-metric-value'}>{value}</div><div className="sp-metric-sub">{sub}</div></div>; }
+function Metric({label,value,sub,small}:{label:string;value:string;sub:string;small?:boolean}) { return <div className="sp-metric"><div className="sp-metric-label">{label}</div><div className={small?'sp-metric-value-sm':'sp-metric-value'}>{value}</div><div className="sp-metric-sub">{sub}</div></div>; }
 function SideStat({label,value,sub}:{label:string;value:string;sub?:string}) { return <div><div className="text-[var(--text-3)] text-[0.72rem] uppercase tracking-wider font-bold">{label}</div><div className="text-sm font-bold mt-1.5">{value}</div>{sub&&<div className="text-[var(--text-2)] text-xs mt-1 leading-relaxed">{sub}</div>}</div>; }
 function PlanRow({l,v}:{l:string;v:string}) { return <div className="flex justify-between gap-3 text-sm"><span className="text-[var(--text-2)]">{l}</span><span className="font-bold text-right">{v}</span></div>; }
 function CompareCol({l,v,s}:{l:string;v:string;s:string}) { return <div><div className="text-[var(--text-3)] text-[0.7rem] uppercase tracking-wider font-bold">{l}</div><div className="text-base font-extrabold mt-1">{v}</div><div className="text-[var(--text-2)] text-xs mt-0.5">{s}</div></div>; }
@@ -424,10 +434,37 @@ function CopySummary({result,display,verdict,alternatives}:any) {
 }
 
 function PdfButton({result,verdict,display,edge,recs}:any) {
-  const [gen,setGen] = useState(false);
-  return <button onClick={async()=>{setGen(true);try{await generateReport(result,verdict,display,edge,recs);}catch(e){console.error(e);}setGen(false);}} disabled={gen} className="sp-btn sp-btn-primary disabled:opacity-80 disabled:pointer-events-none" style={{gap:'8px'}}>
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
-    <span>{gen?'Generating...':'Download PDF report'}</span>{gen&&<span className="sp-spinner"/>}
+  const openReport = () => {
+    const esc = (s:any)=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>SimPhase - Challenge Plan</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:32px;line-height:1.5}
+      h1{font-size:22px;margin:0 0 2px}.sub{color:#666;font-size:12px;margin-bottom:16px}
+      .badge{display:inline-block;border:1.5px solid #111;border-radius:999px;padding:3px 12px;font-weight:700;font-size:13px;margin-bottom:14px}
+      table{width:100%;border-collapse:collapse;margin:8px 0 16px}td,th{border:1px solid #ccc;padding:7px 9px;font-size:13px;text-align:left}th{background:#f3f3f3}
+      h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px}
+      .rec{margin:6px 0;font-size:13px}.foot{margin-top:24px;color:#888;font-size:11px;border-top:1px solid #ddd;padding-top:8px}
+    </style></head><body>
+      <h1>SimPhase - Challenge Plan</h1>
+      <div class="sub">${esc(result.challenge.longName)} - $${result.size.toLocaleString()} - Generated ${new Date().toLocaleDateString()} - Rules verified ${esc(result.challenge.rulesVerified)}</div>
+      <div class="badge">Verdict: ${esc(verdict.label)}</div>
+      <table><tr><th>Recommended risk</th><th>Robust band</th><th>Pass outlook</th><th>Main failure mode</th></tr>
+      <tr><td>${rf(result.recRisk)}</td><td>${rf(result.robustLow)} - ${rf(result.robustHigh)}</td><td>${esc(display.passMidpointLabel)} (${esc(display.passBand)})</td><td>${esc(result.rec.failureMode)}</td></tr></table>
+      <table><tr><th>Trading days</th><th>Expected attempts</th><th>Spend to pass</th><th>Based on</th></tr>
+      <tr><td>${esc(display.dayBand)}</td><td>${esc(display.attemptBand)}</td><td>${esc(display.spendBand)}</td><td>${result.rec.simRuns.toLocaleString()} simulated attempts</td></tr></table>
+      <h2>Execution plan</h2>
+      <div class="rec"><b>Base rule:</b> Start at ${rf(result.recRisk)} and stay there until two profitable sessions are completed cleanly.</div>
+      <div class="rec"><b>Kill-switch:</b> Stop after two full-risk losses or any session reaching ~65% of the daily loss budget.</div>
+      ${recs.map((r:any)=>`<div class="rec"><b>${esc(r.title)}:</b> ${esc(r.message)}</div>`).join('')}
+      <div class="foot">Generated by SimPhase - Monte Carlo simulation under exact prop firm rules. Estimates, not guarantees.</div>
+      <script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { alert('Please allow pop-ups to print the report.'); return; }
+    w.document.write(html); w.document.close();
+  };
+  return <button onClick={openReport} className="sp-btn sp-btn-primary inline-flex items-center gap-2">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    <span>Print / Save as PDF</span>
   </button>;
 }
 
