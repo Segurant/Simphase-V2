@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import {
   FIRMS, CHALLENGES, evaluateChallenge, compareSameSize,
   verdictFor, buildDisplayStats, deriveManualEdge, parseCsvText,
@@ -67,8 +67,12 @@ function enrichVerdict(v: Verdict, exec: ExecutionAnalysis|null, cross: CrossAna
   return v.hint;
 }
 
+const PERSIST_KEY = 'simphase_state_v1';
+const PERSIST_FIELDS = ['selectedFirm','selectedChallenge','selectedSize','inputMode','stressMode','market','fee','feeTouched','winRate','payoffRatio','tradeFrequency','frequencyUnit','maxLossStreak','sampleTrades','csvFileName','csvRawText','journalRawText','journalFileName'] as const;
+
 export function SimPhaseProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SimPhaseState>(defaults);
+  const hydrated = useRef(false);
 
   const doAnalysis = useCallback((s: SimPhaseState) => {
     const edge = s.inputMode==='csv' && s.parsedEdge ? s.parsedEdge
@@ -95,6 +99,47 @@ export function SimPhaseProvider({ children }: { children: ReactNode }) {
     return { result, alternatives, edge, display, verdict, enrichedVerdictNote, execution, journal, cross, level };
   }, []);
 
+  // ── Persistence: restore inputs on load, save on change ──
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PERSIST_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setState(prev => {
+          const next: SimPhaseState = { ...prev };
+          for (const k of PERSIST_FIELDS) if (saved[k] !== undefined) (next as any)[k] = saved[k];
+          if (!CHALLENGES[next.selectedChallenge] || !FIRMS[next.selectedFirm]) {
+            next.selectedFirm = prev.selectedFirm; next.selectedChallenge = prev.selectedChallenge;
+          }
+          if (next.csvRawText) {
+            const p = parseCsvText(next.csvRawText);
+            if (p) next.parsedEdge = p;
+            else { next.csvRawText = ''; next.csvFileName = ''; next.inputMode = 'manual'; }
+          }
+          return next;
+        });
+      }
+    } catch {}
+    hydrated.current = true;
+    // Post-payment return: the inputs are restored, so re-run the analysis automatically
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('session_id') || params.get('unlocked')) {
+        setTimeout(() => setState(s => s.analysis ? s : ({ ...s, analysis: doAnalysis(s) })), 120);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated.current) return;
+    try {
+      const out: Record<string, unknown> = {};
+      for (const k of PERSIST_FIELDS) out[k] = (state as any)[k];
+      localStorage.setItem(PERSIST_KEY, JSON.stringify(out));
+    } catch {}
+  }, [state]);
+
   const actions: SimPhaseActions = {
     setFirm:(id)=>{const f=FIRMS[id];if(!f)return;const fc=f.challenges[0];const ch=CHALLENGES[fc];
       setState(s=>({...s,selectedFirm:id,selectedChallenge:fc,selectedSize:ch.sizes.includes(s.selectedSize)?s.selectedSize:ch.sizes[0],feeTouched:false,fee:ch.feeDefaults[ch.sizes.includes(s.selectedSize)?s.selectedSize:ch.sizes[0]]??0}));},
@@ -110,7 +155,7 @@ export function SimPhaseProvider({ children }: { children: ReactNode }) {
     removeJournalCsv:()=>setState(s=>({...s,journalRawText:'',journalFileName:''})),
     runAnalysis:async()=>{setState(s=>({...s,isAnalyzing:true}));await new Promise(r=>setTimeout(r,400));setState(s=>({...s,analysis:doAnalysis(s),isAnalyzing:false}));},
     loadDemo:()=>{const p=parseCsvText(SAMPLE_CSV);if(!p)return;setState(s=>{const n={...s,parsedEdge:p,csvFileName:'Demo CSV',csvRawText:SAMPLE_CSV,inputMode:'csv' as const};return{...n,analysis:doAnalysis(n)};});},
-    reset:()=>setState(defaults),
+    reset:()=>{try{localStorage.removeItem(PERSIST_KEY);}catch{} setState(defaults);},
   };
 
   return <SimPhaseContext.Provider value={{...state,...actions}}>{children}</SimPhaseContext.Provider>;

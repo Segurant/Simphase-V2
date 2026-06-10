@@ -279,6 +279,12 @@ function Results() {
         params.delete('unlocked'); cleanUrl();
       }
       if (localStorage.getItem('simphase_pro') === '1') setUnlocked(true);
+      // Live unlock: if payment completes in another tab, unlock this one instantly
+      const onStorage = (e: StorageEvent) => { if (e.key === 'simphase_pro' && e.newValue === '1') setUnlocked(true); };
+      const onFocus = () => { try { if (localStorage.getItem('simphase_pro') === '1') setUnlocked(true); } catch {} };
+      window.addEventListener('storage', onStorage);
+      window.addEventListener('focus', onFocus);
+      return () => { window.removeEventListener('storage', onStorage); window.removeEventListener('focus', onFocus); };
     } catch {}
   }, [paywallOn]);
 
